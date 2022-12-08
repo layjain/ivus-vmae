@@ -1,0 +1,9 @@
+*.h5
+__pycache__
+.vscode
+profiling/
+checkpoints/
+wandb/
+logs/
+bash_scripts/
+.DS_Store
