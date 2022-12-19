@@ -4,6 +4,8 @@ import torchvision.transforms.functional as F
 
 import numpy as np
 
+# from utils.ilab_utils import cart2polar
+
 
 class CustomNormalize(object):
     def __init__(self):
@@ -70,7 +72,7 @@ class CustomRTConvert(object):
         return "CustomRTConvert"
 
 
-class PretrainingTrainTransform(object):
+class TrainTransform(object):
     def __init__(self, aug_list, img_size):
         self.aug_list = aug_list
         self.img_size = img_size
@@ -157,7 +159,7 @@ class PretrainingTrainTransform(object):
         return torch.from_numpy(stacked) #, plain(torch.from_numpy(np.float32(vid[0])).transpose(0, 2))
 
 
-class PretrainingValTransform(object):
+class ValTransform(object):
     def __init__(self, img_size, aug_list):
         self.img_size = img_size
         self.aug_list = aug_list

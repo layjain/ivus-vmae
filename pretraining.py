@@ -36,10 +36,10 @@ def main(args):
             raise ValueError(f"invalid mode {mode}")
 
         transforms = {
-            "train": utils.augs.PretrainingTrainTransform(
+            "train": utils.augs.TrainTransform(
                 aug_list=args.pretraining_augs, img_size=args.img_size
             ),
-            "val": utils.augs.PretrainingValTransform(
+            "val": utils.augs.ValTransform(
                 aug_list=args.pretraining_augs, img_size=args.img_size
             ),
         }
@@ -83,7 +83,7 @@ def main(args):
     )
     trainer_args = TrainingArguments(
         output_dir=args.output_dir,
-        learning_rate=1.5e-4,
+        learning_rate=args.lr,
         weight_decay=0.05,
         per_device_train_batch_size=args.batch_size,
         per_device_eval_batch_size=args.batch_size,
