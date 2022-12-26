@@ -7,3 +7,5 @@ wandb/
 logs/
 bash_scripts/
 .DS_Store
+vis_results/
+del.*

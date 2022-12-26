@@ -59,16 +59,21 @@ def main(args):
     train_dataset = get_dataset("train")
     val_dataset = get_dataset("val")
 
-    def collate_function(clips):
+    def collate_function(clips, mask_ratio=args.mask_ratio):
         actual_batch_size = len(clips)
         pixel_values = torch.stack(clips)
         num_patches_per_frame = (
             model.config.image_size // model.config.patch_size
         ) ** 2
         seq_length = (args.clip_len // model.config.tubelet_size) * num_patches_per_frame
-        bool_masked_pos = (
-            torch.randint(0, 2, (seq_length,)).bool().expand(actual_batch_size, -1).clone()
-        )
+        num_ones = int(mask_ratio * seq_length)
+        num_zeros=seq_length - num_ones
+        mask = torch.hstack([torch.zeros(num_zeros), torch.ones(num_ones)])
+        permutation = torch.randperm(seq_length)
+        bool_masked_pos=mask[permutation].bool().expand(actual_batch_size, -1).clone()
+        # bool_masked_pos = (
+        #     torch.randint(0, 2, (seq_length,)).bool().expand(actual_batch_size, -1).clone()
+        # )
         return {"pixel_values": pixel_values, "bool_masked_pos": bool_masked_pos}
 
     ############
@@ -98,6 +103,7 @@ def main(args):
         save_steps=500,
         no_cuda=(args.fast_test),
         warmup_ratio=0.1,
+        dataloader_num_workers=8,
     )
     trainer = Trainer(
         model=model,

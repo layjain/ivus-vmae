@@ -83,6 +83,8 @@ class TrainTransform(object):
         assert H == W
         to_apply = []
 
+        # No resizing is done if the sizes match: 
+        # https://pytorch.org/vision/main/_modules/torchvision/transforms/functional.html#resize
         resize = torchvision.transforms.Resize((self.img_size, self.img_size))
         to_apply.append(resize)
 

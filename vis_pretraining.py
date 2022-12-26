@@ -96,13 +96,13 @@ def main(args):
         mask = torch.ones_like(img_patch)
         mask[bool_masked_pos] = 0
         mask = rearrange(mask, 'b n (p c) -> b n p c', c=1)
-        mask = rearrange(mask, 'b (t h w) (p0 p1 p2) c -> b c (t p0) (h p1) (w p2) ', p0=2, p1=model.config.patch_size, p2=model.config.patch_size, h=14, w=14)
+        mask = rearrange(mask, 'b (t h w) (p0 p1 p2) c -> b c (t p0) (h p1) (w p2) ', p0=2, p1=model.config.patch_size, p2=model.config.patch_size, h=model.config.image_size // model.config.patch_size, w=model.config.image_size // model.config.patch_size)
 
         #save reconstruction video
         rec_img = rearrange(img_patch, 'b n (p c) -> b n p c', c=1)
         # Notice: To visualize the reconstruction video, we add the predict and the original mean and var of each patch.
         rec_img = rec_img * (img_squeeze.var(dim=-2, unbiased=True, keepdim=True).sqrt() + 1e-6) + img_squeeze.mean(dim=-2, keepdim=True)
-        rec_img = rearrange(rec_img, 'b (t h w) (p0 p1 p2) c -> b c (t p0) (h p1) (w p2)', p0=2, p1=model.config.patch_size, p2=model.config.patch_size, h=14, w=14)
+        rec_img = rearrange(rec_img, 'b (t h w) (p0 p1 p2) c -> b c (t p0) (h p1) (w p2)', p0=2, p1=model.config.patch_size, p2=model.config.patch_size, h=model.config.image_size // model.config.patch_size, w=model.config.image_size // model.config.patch_size)
         pickle.dump(rec_img.squeeze().numpy(), open("vis_results/rec_img.pkl",'wb'))
         
         #save masked video 
@@ -113,9 +113,16 @@ def main(args):
         #     im.save(f"{args.save_path}/mask_img{id}.jpg")
 
 if __name__=="__main__":
+    # TODO: Allow arbitrary tubelet sizes
+    # TODO: Allow different masking ratios
     parser = argparse.ArgumentParser(description='Pretraining Arguments')
 
-    parser.add_argument("--pretrained-path", default="/data/vision/polina/users/layjain/ivus-vmae/checkpoints/pretraining/1/12-8-1_len12-sz224-epochs250/checkpoint-174500")
+    # 224, L12, M50, Tub2, Norm
+    PRETR_1= "/data/vision/polina/users/layjain/ivus-vmae/checkpoints/pretraining/1/12-8-1_len12-sz224-epochs250/checkpoint-174500"
+    # 256, L12, M95, Tub2, afcbs+Norm 
+    PRETR_2 = "/data/vision/polina/users/layjain/ivus-vmae/checkpoints/pretraining/2/12-21-2_len12-sz256-mask0.95-epochs250-augaffine-flip-cj-blur-sharp-norm/checkpoint-174500"
+
+    parser.add_argument("--pretrained-path", default=PRETR_2)
     parser.add_argument("--data-path", default='/data/vision/polina/users/layjain/pickled_data/folded_malapposed_runs')
     
     args = parser.parse_args()

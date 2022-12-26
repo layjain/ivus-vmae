@@ -3,6 +3,21 @@ from . import visualize
 from . import augs
 
 import torch
+import time
+
+#################################################################################
+### General Utils
+#################################################################################
+def timer_func(func, identifier=""):
+    # This function shows the execution time of 
+    # the function object passed
+    def wrap_func(*args, **kwargs):
+        t1 = time.time()
+        result = func(*args, **kwargs)
+        t2 = time.time()
+        print(f'Function {identifier}:{func.__name__!r} executed in {(t2-t1):.4f}s')
+        return result
+    return wrap_func
 
 
 #################################################################################

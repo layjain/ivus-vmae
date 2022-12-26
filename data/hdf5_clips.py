@@ -9,6 +9,9 @@ import pickle
 import h5py
 import json
 
+from utils import timer_func
+import time
+
 def get_labelled_set(stent_json, label = "malapposition", assert_nonempty = True):
     '''
     Checkout ivus-utils for a full set of json-parsing functions
@@ -111,9 +114,10 @@ class LabelledClips():
         root='/data/vision/polina/users/layjain/pickled_data/malapposed_runs',
         frames_per_clip=7,
         delta_frames=100,
+        save_img_size=512,
         transform=None,
         cached=False,
-        save_file='/data/scratch/layjain/labellked_clips.h5'
+        save_file='/data/scratch/layjain/labelled_clips.h5'
     ):
 
         self.delta = delta_frames
@@ -122,6 +126,7 @@ class LabelledClips():
         self.clip_len = frames_per_clip
         self.left_frames = frames_per_clip//2
         self.right_frames = frames_per_clip-self.left_frames
+        self.save_img_size = save_img_size
 
         if cached:
             print(f"Loading cached data from {save_file}")
@@ -140,8 +145,12 @@ class LabelledClips():
             with open(filepath, 'rb') as fh:
                 images = pickle.load(fh)
             assert isinstance(images, np.ndarray)
-
-            num_frames = len(images)
+            # Reshape if required
+            num_frames, H, W, C = images.shape
+            assert C==1 # grayscale
+            assert H==W # square
+            if H!=self.save_img_size:
+                images=self._resize_images(images)
             
             filename = filepath.split('/')[-1].split('.')[0]
             json_filepath = f"/data/vision/polina/users/layjain/pickled_data/malapposed_runs/jsons/{filename}.json"
@@ -156,6 +165,14 @@ class LabelledClips():
 
         self.f.close()
         self.f = h5py.File(save_file, 'r')
+
+    def _resize_images(self, images):
+        # Use torchvision transform for connsistency
+        import torchvision
+        resize = torchvision.transforms.Resize((self.save_img_size, self.save_img_size))
+        images = resize(torch.from_numpy(np.float32(images)).squeeze()) # N, H', W'
+        images = images.unsqueeze(-1).numpy() # N, H', W', 1
+        return images
 
     def get_non_malapposed_frame_indices(self, num_frames, mal_frames):
         ret = []
@@ -182,7 +199,7 @@ class LabelledClips():
         clips = np.stack(clips)
 
         if not self.initialized[section]:
-            self.f.create_dataset(f"{section}_clips",data=clips,maxshape=(None,)+clips.shape[1:])
+            self.f.create_dataset(f"{section}_clips",data=clips,maxshape=(None,)+clips.shape[1:], chunks=(1,)+clips.shape[1:])
             self.initialized[section] = True
         else:
             self.f[f'{section}_clips'].resize((self.f[f'{section}_clips'].shape[0] + clips.shape[0]), axis=0)
@@ -220,7 +237,6 @@ class BalancedDataset(Dataset):
         if idx >= dataset_length:
             idx = torch.randint(0, dataset_length, size=(1,)).item()
         return idx
-
 
     def __getitem__(self, idx):
         malapposed_item = self.malapposed_dataset.__getitem__(self._get_dataset_idx(idx, self.malapposed_dataset))

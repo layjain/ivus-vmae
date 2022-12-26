@@ -9,20 +9,18 @@ def pretraining_args():
     parser.add_argument("--data-path", type=str, default='/data/vision/polina/users/layjain/pickled_data/train_val_split_4a')
     parser.add_argument("--use-cached-dataset",  dest="use_cached_dataset", help="Use cached Dataset", action='store_true')
     parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--num_workers", type=int, default=8)
     parser.add_argument('--pretraining-augs', default=[], type=str, nargs='+')
     parser.add_argument("--num-epochs", type=int, default=25, help="Number of Training Epochs")
     parser.add_argument("--fast-test", dest="fast_test", default=False, action='store_true')
     parser.add_argument("--run-name", default='uncategorized', type=str)
     parser.add_argument("--lr", default=1.5e-4, type=float)
+    parser.add_argument("--mask-ratio", default=0.5, type=float)
 
     args = parser.parse_args()
-    if args.fast_test:
-        args.num_workers=0
     
     # Make the output-dir
     keys={
-        "img_size":"sz", "clip_len":"len", "num_epochs":"epochs", "pretraining_augs":"aug"
+        "img_size":"sz", "clip_len":"len", "num_epochs":"epochs", "pretraining_augs":"aug", "mask_ratio":"mask"
     }
     name = '-'.join(["%s%s" % (keys[k], getattr(args, k) if not isinstance(getattr(args, k), list) else '-'.join([str(s) for s in getattr(args, k)])) for k in sorted(keys)])
     import datetime
@@ -39,7 +37,6 @@ def classification_args():
     parser.add_argument("--data-path", type=str, default='/data/vision/polina/users/layjain/pickled_data/folded_malapposed_runs')
     parser.add_argument("--use-cached-dataset",  dest="use_cached_dataset", help="Use cached Dataset", action='store_true')
     parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--num-workers", type=int, default=8)
     parser.add_argument('--classification-augs', default=[], type=str, nargs='+')
     parser.add_argument("--num-epochs", type=int, default=25, help="Number of Training Epochs")
     parser.add_argument("--fast-test", dest="fast_test", default=False, action='store_true')
@@ -50,8 +47,6 @@ def classification_args():
     parser.add_argument("--pretrained-path", default='MCG-NJU/videomae-base', type=str)
 
     args = parser.parse_args()
-    if args.fast_test:
-        args.num_workers=0
     
     # Make the output-dir
     keys={
