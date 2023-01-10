@@ -23,9 +23,17 @@ def main(args):
     #########
 
     config = VideoMAEConfig(
-        image_size=args.img_size, num_channels=1, num_frames=args.clip_len
+        image_size=args.img_size,
+        num_channels=1,
+        num_frames=args.clip_len,
+        hidden_size=args.hidden_size,
+        tubelet_size=args.tubelet_size,
+        intermediate_size=args.intermediate_size,
+        decoder_hidden_size=args.decoder_hidden_size,
+        decoder_intermediate_size=args.decoder_intermediate_size,
     )
     model = VideoMAEForPreTraining(config)
+    print(f"=> Initialized VideoMAE-Pretraining model w. {utils.count_parameters(model)} trainable parameters")
 
     ###########
     # Dataset #
@@ -65,12 +73,14 @@ def main(args):
         num_patches_per_frame = (
             model.config.image_size // model.config.patch_size
         ) ** 2
-        seq_length = (args.clip_len // model.config.tubelet_size) * num_patches_per_frame
+        seq_length = (
+            args.clip_len // model.config.tubelet_size
+        ) * num_patches_per_frame
         num_ones = int(mask_ratio * seq_length)
-        num_zeros=seq_length - num_ones
+        num_zeros = seq_length - num_ones
         mask = torch.hstack([torch.zeros(num_zeros), torch.ones(num_ones)])
         permutation = torch.randperm(seq_length)
-        bool_masked_pos=mask[permutation].bool().expand(actual_batch_size, -1).clone()
+        bool_masked_pos = mask[permutation].bool().expand(actual_batch_size, -1).clone()
         # bool_masked_pos = (
         #     torch.randint(0, 2, (seq_length,)).bool().expand(actual_batch_size, -1).clone()
         # )

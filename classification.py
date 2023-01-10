@@ -69,16 +69,23 @@ class CustomCallback(TrainerCallback):
     def on_epoch_end(self, args, state, control, **kwargs):
         if control.should_evaluate:
             control_copy = deepcopy(control)
-            self._trainer.evaluate(eval_dataset=self._trainer.train_dataset, metric_key_prefix="train")
+            metrics = self._trainer.evaluate(eval_dataset=self._trainer.train_dataset, metric_key_prefix="train")
+            print("CustomCallBack output metrics:")
+            print(metrics)
             return control_copy
 
 def main(args):
     # Model
-    model = VideoMAEForVideoClassification.from_pretrained(
-        args.pretrained_path,
-        id2label={0: "Normal", 1: "Malapposed"},
-        label2id={"Normal": 0, "Malapposed": 1},
-    )
+    if not args.scratch_like:
+        model = VideoMAEForVideoClassification.from_pretrained(
+            args.pretrained_path,
+            id2label={0: "Normal", 1: "Malapposed"},
+            label2id={"Normal": 0, "Malapposed": 1},
+        )
+    else:
+        config = VideoMAEConfig.from_pretrained(args.pretrained_path)
+        model = VideoMAEForVideoClassification(config)
+    print(f"=> Loaded VideoMAE model w. {utils.count_parameters(model)} trainable parameters")
     # Dataset
     feature_extractor = VideoMAEFeatureExtractor.from_pretrained(args.pretrained_path)
     img_size = feature_extractor.size
@@ -93,15 +100,15 @@ def main(args):
         weight_decay=0.05,
         per_device_train_batch_size=args.batch_size//2,
         per_device_eval_batch_size=args.batch_size//2,
-        report_to="wandb",
+        report_to=(None if args.fast_test else "wandb"),
         run_name=args.name,
         num_train_epochs=args.num_epochs,
         evaluation_strategy="steps",
         logging_strategy="steps",
         save_strategy="steps",
-        logging_steps=1000,
-        eval_steps=1000,
-        save_steps=1000,
+        logging_steps=(5 if args.fast_test else 1000),
+        eval_steps=(5 if args.fast_test else 1000),
+        save_steps=(5 if args.fast_test else 1000),
         no_cuda=(args.fast_test),
         warmup_ratio=0.1,
         dataloader_num_workers=16,
@@ -115,7 +122,7 @@ def main(args):
         data_collator=collate_function,
         compute_metrics=compute_metrics,
     )
-    trainer.add_callback(CustomCallback(trainer)) 
+    # trainer.add_callback(CustomCallback(trainer)) 
     train_results = trainer.train()
 
 
@@ -125,7 +132,7 @@ def get_dataset(args, img_size, clip_len, mode):
 
     mode_to_transform = {
         "train": utils.augs.TrainTransform(
-            aug_list=args.classification_augs, img_size=img_size
+            aug_list=args.classification_augs, img_size=img_size, deterministic_intensity=args.det_in
         ),
         "val": utils.augs.ValTransform(
             aug_list=args.classification_augs, img_size=img_size

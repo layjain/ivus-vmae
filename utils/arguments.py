@@ -15,6 +15,12 @@ def pretraining_args():
     parser.add_argument("--run-name", default='uncategorized', type=str)
     parser.add_argument("--lr", default=1.5e-4, type=float)
     parser.add_argument("--mask-ratio", default=0.5, type=float)
+    parser.add_argument("--hidden-size", default=768, type=int)
+    parser.add_argument("--tubelet-size", default=2, type=int)
+    parser.add_argument("--intermediate-size", default=3072, type=int)
+    parser.add_argument("--decoder-hidden-size", default=384, type=int)
+    parser.add_argument("--decoder-intermediate-size", default=1536, type=int)
+
 
     args = parser.parse_args()
     
@@ -45,6 +51,8 @@ def classification_args():
     parser.add_argument("--fold", default=0, type=int)
     parser.add_argument("--delta-frames", default=100, type=int)
     parser.add_argument("--pretrained-path", default='MCG-NJU/videomae-base', type=str)
+    parser.add_argument("--scratch-like", dest="scratch_like", default=False, action='store_true')
+    parser.add_argument("--det-in", dest="det_in", default=False, action='store_true', help='deterministic intensity augs')
 
     args = parser.parse_args()
     

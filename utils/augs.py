@@ -73,9 +73,10 @@ class CustomRTConvert(object):
 
 
 class TrainTransform(object):
-    def __init__(self, aug_list, img_size):
+    def __init__(self, aug_list, img_size, deterministic_intensity=False):
         self.aug_list = aug_list
         self.img_size = img_size
+        self.det_in = deterministic_intensity
 
     def __call__(self, vid):
         T, H, W, C = vid.shape  # To assert correct shape
@@ -113,18 +114,48 @@ class TrainTransform(object):
                 if torch.rand(1) < 0.5:
                     to_apply.append(F.vflip)
             elif aug_string == "cj":  # randomized
-                cj = torchvision.transforms.ColorJitter(
-                    brightness=0.2, contrast=0.3, saturation=0.2
-                )
+                if not self.det_in:
+                    cj = torchvision.transforms.ColorJitter(
+                        brightness=0.2, contrast=0.3, saturation=0.2
+                    )
+                else: # deterministic version
+                    cj_params = torchvision.transforms.ColorJitter.get_params(
+                        brightness=(0.8, 1.2), contrast=(0.7, 1.3), saturation=(0.8, 1.2), hue=None
+                    )
+                    fn_idx, brightness_factor, contrast_factor, saturation_factor, hue_factor = cj_params
+                    def cj(img):
+                        for fn_id in fn_idx:
+                            if fn_id == 0 and brightness_factor is not None:
+                                img = F.adjust_brightness(img, brightness_factor)
+                            elif fn_id == 1 and contrast_factor is not None:
+                                img = F.adjust_contrast(img, contrast_factor)
+                            elif fn_id == 2 and saturation_factor is not None:
+                                img = F.adjust_saturation(img, saturation_factor)
+                            elif fn_id == 3 and hue_factor is not None:
+                                img = F.adjust_hue(img, hue_factor)
+
+                        return img
+
                 to_apply.append(cj)
             elif aug_string == "blur":  # randomized
-                blur = torchvision.transforms.GaussianBlur(
-                    kernel_size=7, sigma=(0.1, 3)
-                )
-                blur = CustomRandomize(blur, p=0.5)
+                if not self.det_in:
+                    blur = torchvision.transforms.GaussianBlur(
+                        kernel_size=7, sigma=(0.1, 3)
+                    )
+                    blur = CustomRandomize(blur, p=0.5)
+                else: # deterministic version
+                    sigma = torchvision.transforms.GaussianBlur.get_params(0.1, 3)
+                    blur = lambda img: F.gaussian_blur(img, (7,7), [sigma, sigma])
+
                 to_apply.append(blur)
             elif aug_string == "sharp":  # randomized
-                sharpness = torchvision.transforms.RandomAdjustSharpness(2)
+                if not self.det_in:
+                    sharpness = torchvision.transforms.RandomAdjustSharpness(2.)
+                else:
+                    if torch.rand(1) < 0.5:
+                        sharpness = lambda img: F.adjust_sharpness(img, 2.)
+                    else:
+                        sharpness = lambda img: img
                 to_apply.append(sharpness)
             elif aug_string == "rt":  # deterministic
                 rt = CustomRTConvert()
